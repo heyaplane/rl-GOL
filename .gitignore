@@ -1,0 +1,6 @@
+# Ignore object files, executables, and other temporary files
+*.o
+*.out
+*.exe
+*.a
+*.so
