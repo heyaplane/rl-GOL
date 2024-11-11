@@ -45,6 +45,8 @@ int main(int argc, char** argv)
 
     unsigned int ssboA = rlLoadShaderBuffer(gol_width * gol_height * sizeof(unsigned int), NULL, RL_DYNAMIC_COPY);
     unsigned int ssboB = rlLoadShaderBuffer(gol_width * gol_height * sizeof(unsigned int), NULL, RL_DYNAMIC_COPY);
+    unsigned int ssboP1 = rlLoadShaderBuffer(gol_width * gol_height * sizeof(unsigned int), NULL, RL_DYNAMIC_COPY);
+    unsigned int diffs = rlLoadShaderBuffer(2 * sizeof(unsigned int), NULL, RL_DYNAMIC_COPY);
 
     {
         unsigned int initialState[gol_width * gol_height];
@@ -61,19 +63,71 @@ int main(int argc, char** argv)
     UnloadImage(whiteImg);
 
     uint frameCount = 0;
+    unsigned int zeroDiff[2] = {0, 0};
+    unsigned int calcDiff[2];
+    int gameOver = 0;
+    char gameOverText[50];
+    uint diff_history[20] = { 0 };
 
     while (!WindowShouldClose())
     {
+        /* SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor())); */
         SetTargetFPS(60);
+        if (gameOver)
+        {
+            BeginDrawing();
+            EndDrawing();
+            continue;
+        }
+
         frameCount++;
 
         rlEnableShader(computeProgram);
+        rlUpdateShaderBuffer(diffs, zeroDiff, 2 * sizeof(unsigned int), 0);
         rlBindShaderBuffer(ssboA, 1);
         rlBindShaderBuffer(ssboB, 2);
+        rlBindShaderBuffer(ssboP1, 3);
+        rlBindShaderBuffer(diffs, 4);
         rlComputeShaderDispatch(gol_num_grp_x, gol_num_grp_y, 1);
         rlDisableShader();
 
-        int temp = ssboA;
+        rlReadShaderBuffer(diffs, calcDiff, 2 * sizeof(unsigned int), 0);
+
+        if (frameCount % 1 == 0)
+            TraceLog(LOG_WARNING, "CalcDiff: %d %d", calcDiff[0], calcDiff[1]);
+
+        if (calcDiff[0] == 0)
+            gameOver = 1;
+
+        else if (calcDiff[1] == 0)
+                gameOver = 2;
+
+        uint idx = frameCount % 20;
+        uint idx_1 = (frameCount - 1) % 20;
+        uint idx_2 = (frameCount - 2) % 20;
+        uint idx_3 = (frameCount - 3) % 20;
+        uint idx_4 = (frameCount - 4) % 20;
+        uint idx_5 = (frameCount - 5) % 20;
+        uint idx_6 = (frameCount - 6) % 20;
+        uint idx_7 = (frameCount - 7) % 20;
+        uint idx_8 = (frameCount - 8) % 20;
+
+        diff_history[idx] = calcDiff[1];
+
+        if (diff_history[idx] == diff_history[idx_3])
+        {
+            if (diff_history[idx_1] == diff_history[idx_4] && diff_history[idx_2] == diff_history[idx_5])
+                gameOver = 6;
+        }
+
+        if (diff_history[idx] == diff_history[idx_6])
+        {
+            if (diff_history[idx_1] == diff_history[idx_7] && diff_history[idx_2] == diff_history[idx_8])
+                gameOver = 9;
+        }
+
+        int temp = ssboP1;
+        ssboP1 = ssboA;
         ssboA = ssboB;
         ssboB = temp;
 
@@ -89,12 +143,19 @@ int main(int argc, char** argv)
 
             DrawFPS(GetScreenWidth() - 150, 10);
             DrawText(TextFormat("Count: %d", frameCount), GetScreenWidth() - 150, 30, 20, GREEN);
+            if (gameOver)
+            {
+                sprintf(gameOverText, "Every %d Frames Repeated!", gameOver);
+                DrawText(gameOverText, GetScreenWidth() / 4, GetScreenHeight() / 2, 20, RED);
+            }
 
         EndDrawing();
     }
 
     rlUnloadShaderBuffer(ssboA);
     rlUnloadShaderBuffer(ssboB);
+    rlUnloadShaderBuffer(ssboP1);
+    rlUnloadShaderBuffer(diffs);
 
     rlUnloadShaderProgram(computeProgram);
     UnloadShader(renderShader);

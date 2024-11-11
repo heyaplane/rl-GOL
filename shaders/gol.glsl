@@ -6,8 +6,16 @@ layout(std430, binding = 1) readonly restrict buffer golLayout {
     uint golBuffer[];
 };
 
-layout(std430, binding = 2) writeonly restrict buffer golLayout2 {
+layout(std430, binding = 2) buffer golLayout2 {
     uint golBufferDest[];
+};
+
+layout(std430, binding = 3) readonly restrict buffer golLayout3 {
+    uint golBufferP1[];
+};
+
+layout(std430, binding = 4) buffer atomCounter {
+    uint diffs[];
 };
 
 uniform uint gol_width;
@@ -23,6 +31,7 @@ void main()
     uint nCount = 0;
     uint x = gl_GlobalInvocationID.x;
     uint y = gl_GlobalInvocationID.y;
+    uint index = y * gol_width + x;
 
     nCount += lookup_state(x - 1, y - 1);
     nCount += lookup_state(x, y - 1);
@@ -36,4 +45,10 @@ void main()
     if (nCount == 3) set_state(x, y, 1);
     else if (nCount == 2) set_state(x, y, lookup_state(x, y));
     else set_state(x, y, 0);
+
+    if (golBufferDest[index] != golBuffer[index] && diffs[0] == 0)
+        atomicAdd(diffs[0], 1);
+
+    if (golBufferDest[index] != golBufferP1[index] && diffs[1] == 0)
+        atomicAdd(diffs[1], 1);
 }
