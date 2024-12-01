@@ -10,12 +10,8 @@ layout(std430, binding = 2) buffer golLayout2 {
     uint golBufferDest[];
 };
 
-layout(std430, binding = 3) readonly restrict buffer golLayout3 {
-    uint golBufferP1[];
-};
-
-layout(std430, binding = 4) buffer atomCounter {
-    uint diffs[];
+layout(std430, binding = 3) buffer cellFlag {
+    uint flag;
 };
 
 uniform uint gol_width;
@@ -46,9 +42,5 @@ void main()
     else if (nCount == 2) set_state(x, y, lookup_state(x, y));
     else set_state(x, y, 0);
 
-    if (golBufferDest[index] != golBuffer[index] && diffs[0] == 0)
-        atomicAdd(diffs[0], 1);
-
-    if (golBufferDest[index] != golBufferP1[index] && diffs[1] == 0)
-        atomicAdd(diffs[1], 1);
+    if (x == 251 && y == 142 && lookup_state(x, y) > 0) flag = 1;
 }

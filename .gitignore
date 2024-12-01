@@ -4,3 +4,6 @@
 *.exe
 *.a
 *.so
+gol
+rl_helloworld*
+bits*
